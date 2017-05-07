@@ -12,6 +12,8 @@ import javafx.stage.Stage;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Consumer;
 
 public abstract class Gui {
@@ -66,10 +68,12 @@ public abstract class Gui {
     }
 
     protected Menu menu(String name, MenuItem... items) {
+        return menu(name, Arrays.asList(items));
+    }
+
+    protected Menu menu(String name, List<MenuItem> items) {
         Menu menu = new Menu(name);
-        menu.getItems().addAll(
-                items
-        );
+        menu.getItems().addAll(items);
         return menu;
     }
 

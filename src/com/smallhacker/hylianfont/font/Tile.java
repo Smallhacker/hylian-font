@@ -2,14 +2,17 @@ package com.smallhacker.hylianfont.font;
 
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
+import javafx.scene.paint.Color;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class Tile {
-    public static final int WIDTH = 11;
-    public static final int HEIGHT = 16;
-    private static final int TILE_COUNT = 512;
+    public static final int TILE_COUNT = 512;
+
+    private static final int WIDTH = 11;
+    private static final int HEIGHT = 16;
+    private static final Color BORDER_COLOR = Color.RED;
 
     private final int index;
     private final byte[] pixels;
@@ -60,11 +63,20 @@ public final class Tile {
         System.arraycopy(source.pixels, 0, pixels, 0, pixels.length);
     }
 
-    public void render(WritableImage img, Palette palette, int baseX, int baseY, int scale) {
+    public void render(WritableImage img, int baseX, int baseY, Rendering rendering) {
         PixelWriter writer = img.getPixelWriter();
-        for (int y = 0; y < HEIGHT; y++) {
-            for (int x = 0; x < WIDTH; x++) {
-                int paletteIndex = pixels[coordsToIndex(x, y)];
+
+        Palette palette = rendering.getPalette();
+        int originX = rendering.getOriginX();
+        int scale = rendering.getScale();
+        int width = rendering.getWidth();
+        int height = rendering.getHeight();
+
+        boolean masked = rendering.getMode() == Rendering.Mode.MASKED;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int paletteIndex = pixels[coordsToIndex(x + originX, y)];
                 for (int x2 = 0; x2 < scale; x2++) {
                     int px = x * scale + baseX + x2;
                     if (px < 0 || px >= img.getWidth()) {
@@ -75,8 +87,32 @@ public final class Tile {
                         if (py < 0 || py >= img.getHeight()) {
                             continue;
                         }
-                        writer.setColor(px, py, palette.getColor(paletteIndex));
+                        Color color = palette.getColor(paletteIndex);
+
+                        if (masked && (x == 0 || x > 8)) {
+                            color = color.darker();
+                        }
+
+                        writer.setColor(px, py, color);
                     }
+                }
+            }
+        }
+
+        if (masked) {
+            drawBorder(img, writer, scale);
+        }
+    }
+
+    private void drawBorder(WritableImage img, PixelWriter writer, int scale) {
+        int x1 = scale - 1;
+        int x2 = (scale * 9);
+
+        for (int y = 0; y < img.getHeight(); y++) {
+            if (x1 < img.getWidth()) {
+                writer.setColor(x1, y, BORDER_COLOR);
+                if (x2 < img.getWidth()) {
+                    writer.setColor(x2, y, BORDER_COLOR);
                 }
             }
         }

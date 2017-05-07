@@ -3,10 +3,11 @@ package com.smallhacker.hylianfont.app;
 import com.smallhacker.gui.Gui;
 import com.smallhacker.gui.GuiCanvas;
 import com.smallhacker.gui.Handlers;
-import com.smallhacker.hylianfont.font.Palette;
+import com.smallhacker.hylianfont.font.Rendering;
 import com.smallhacker.hylianfont.font.Tile;
 import javafx.scene.control.Button;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -16,39 +17,43 @@ import java.util.function.Consumer;
 import static com.smallhacker.gui.Handlers.handlers;
 
 final class TileGui extends Gui {
-    private static final int ZOOM = 16;
-    private static final int WIDTH = Tile.WIDTH * ZOOM;
-    private static final int HEIGHT = Tile.HEIGHT * ZOOM;
-    private static final int PIXELS_TO_HIDE = 2 * ZOOM;
+    private static final int TILE_LINES_TO_HIDE = 2;
     private static final int BUTTON_SIZE = 24;
 
-    private final Palette palette;
     private final GuiCanvas canvas;
     private final Button[] colorButtons = new Button[4];
+    private final Handlers<Tile> onTileUpdate = handlers();
 
     private Tile currentTile;
     private byte color;
-    private final Handlers<Tile> onTileUpdate = handlers();
+    private Rendering rendering;
 
-    TileGui(Stage stage, Palette palette) {
-        super(stage, "Tile Editor", WIDTH, HEIGHT - PIXELS_TO_HIDE + BUTTON_SIZE);
+    TileGui(Stage stage, Rendering rendering) {
+        super(stage, "Tile Editor", tileWidth(rendering), tileHeight(rendering) + BUTTON_SIZE);
         stage.initStyle(StageStyle.UTILITY);
 
-        this.palette = palette;
-        this.canvas = canvas(WIDTH, HEIGHT - PIXELS_TO_HIDE);
+        this.rendering = rendering;
+        this.canvas = canvas(tileWidth(rendering), tileHeight(rendering));
         for (byte i = 0; i < 4; i++) {
             byte color = i;
-            Button button = colorButton(i);
+            Button button = colorButton();
             button.setOnMouseClicked(me -> setColor(color));
             colorButtons[i] = button;
         }
+        updateButtonColors();
 
         setColor((byte) 0);
 
         canvas.onMousePressed(this::onMouse);
         canvas.onMouseDragged(this::onMouse);
+    }
 
+    private static int tileWidth(Rendering rendering) {
+        return rendering.getScaledWidth();
+    }
 
+    private static int tileHeight(Rendering rendering) {
+        return rendering.getScaledHeight() - (TILE_LINES_TO_HIDE * rendering.getScale());
     }
 
     private void onMouse(MouseEvent me) {
@@ -59,11 +64,18 @@ final class TileGui extends Gui {
         }
     }
 
-    private Button colorButton(int id) {
+    private Button colorButton() {
         Button button = button();
-        button.setGraphic(new Rectangle(16, 16, palette.getColor(id)));
         button.resize(BUTTON_SIZE, BUTTON_SIZE);
         return button;
+    }
+
+    private void updateButtonColors() {
+        for (int i = 0; i < colorButtons.length; i++) {
+            Button button = colorButtons[i];
+            Color color = rendering.getPalette().getColor(i);
+            button.setGraphic(new Rectangle(16, 16, color));
+        }
     }
 
     private void setColor(byte color) {
@@ -76,9 +88,6 @@ final class TileGui extends Gui {
     private void plot(MouseEvent me) {
         if (currentTile != null) {
             int index = toIndex(me);
-            if (index < 2 * Tile.WIDTH) {
-                return;
-            }
             if (currentTile.set(index, color)) {
                 render();
                 onTileUpdate.invoke(currentTile);
@@ -94,21 +103,38 @@ final class TileGui extends Gui {
     }
 
     private int toIndex(MouseEvent me) {
-        int x = ((int) me.getX()) / ZOOM;
-        int y = ((int) me.getY() + PIXELS_TO_HIDE) / ZOOM;
+        int scale = rendering.getScale();
+        int offsetY = TILE_LINES_TO_HIDE * scale;
+        int x = ((int) me.getX()) / scale;
+        int y = ((int) me.getY() + offsetY) / scale;
         return Tile.coordsToIndex(x, y);
     }
-
 
     public void setTile(Tile tile) {
         currentTile = tile;
         render();
     }
 
+    public Rendering getRendering() {
+        return rendering;
+    }
+
+    public void setRendering(Rendering rendering) {
+        if (this.rendering.getScaledWidth() != rendering.getScaledWidth() || this.rendering.getScaledHeight() != rendering.getScaledHeight()) {
+            throw new IllegalArgumentException("Scaled size cannot change.");
+        }
+        this.rendering = rendering;
+        render();
+        updateButtonColors();
+    }
+
     private void render() {
-        canvas.render(image -> {
-            currentTile.render(image, palette, 0, -PIXELS_TO_HIDE, ZOOM);
-        });
+        if (currentTile != null) {
+            canvas.render(image -> {
+                int offsetY = -TILE_LINES_TO_HIDE * rendering.getScale();
+                currentTile.render(image, 0, offsetY, rendering);
+            });
+        }
     }
 
     public void onTileUpdate(Consumer<Tile> handler) {

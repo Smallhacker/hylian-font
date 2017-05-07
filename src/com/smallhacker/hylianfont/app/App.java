@@ -3,6 +3,7 @@ package com.smallhacker.hylianfont.app;
 import com.smallhacker.gui.Gui;
 import com.smallhacker.hylianfont.font.Font;
 import com.smallhacker.hylianfont.font.Palette;
+import com.smallhacker.hylianfont.font.Rendering;
 import com.smallhacker.hylianfont.font.Tile;
 import javafx.application.Application;
 import javafx.scene.control.Alert;
@@ -23,12 +24,13 @@ public final class App extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        ViewMode defaultViewMode = ViewMode.WIDE_MODE;
         Palette palette = new Palette(0x008888, 0x000073, 0xFFFFFF, 0xC60000);
 
         Stage tileStage = new Stage();
         tileStage.initOwner(primaryStage);
-        TileGui tileGui = new TileGui(tileStage, palette);
-        SelectionGui selectionGui = new SelectionGui(primaryStage, palette);
+        TileGui tileGui = new TileGui(tileStage, new Rendering(16, defaultViewMode.getTileMode(), palette));
+        SelectionGui selectionGui = new SelectionGui(primaryStage, new Rendering(2, defaultViewMode.getSelectionMode(), palette));
 
         selectionGui.onLoad(path -> {
             try {
@@ -67,6 +69,11 @@ public final class App extends Application {
                 tile.copy(currentTile);
                 selectionGui.rerender(tile);
             }
+        });
+
+        selectionGui.onViewModeChange(viewMode -> {
+            tileGui.setRendering(tileGui.getRendering().withMode(viewMode.getTileMode()));
+            selectionGui.setRendering(selectionGui.getRendering().withMode(viewMode.getSelectionMode()));
         });
         tileGui.onTileUpdate(selectionGui::rerender);
         selectionGui.onFocusChange(focus -> tileGui.stage().setAlwaysOnTop(focus));
