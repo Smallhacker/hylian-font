@@ -4,6 +4,7 @@ import com.smallhacker.gui.Gui;
 import com.smallhacker.gui.GuiCanvas;
 import com.smallhacker.gui.Handlers;
 import com.smallhacker.hylianfont.font.Font;
+import com.smallhacker.hylianfont.font.Palette;
 import com.smallhacker.hylianfont.font.Rendering;
 import com.smallhacker.hylianfont.font.Tile;
 import javafx.scene.control.Menu;
@@ -35,18 +36,19 @@ final class SelectionGui extends Gui {
     private final Handlers<Path> onLoad = handlers();
     private final Handlers<Void> onSave = handlers();
     private final Handlers<ViewMode> onViewModeChange = handlers();
+    private final Handlers<Palette> onPaletteChange = handlers();
     private final FilePicker fileChooser;
 
     private Font font;
     private MenuItem saveMenuItem;
     private Rendering rendering;
 
-    SelectionGui(Stage stage, Rendering rendering) {
+    SelectionGui(Stage stage, List<Palette> palettes, Rendering rendering) {
         super(stage, "Hylian Font 1.1.0", getWidth(rendering), getHeight(rendering) + MENU_HEIGHT);
 
         this.rendering = rendering;
 
-        buildMenu();
+        buildMenu(palettes);
 
         this.canvas = canvas(getWidth(rendering), getHeight(rendering));
 
@@ -102,7 +104,7 @@ final class SelectionGui extends Gui {
         render();
     }
 
-    private void buildMenu() {
+    private void buildMenu(List<Palette> palettes) {
         Menu file = menu("File",
                 menuItem("Load ROM", this::load),
                 saveMenuItem = menuItem("Save ROM", this::save),
@@ -116,7 +118,14 @@ final class SelectionGui extends Gui {
                 .collect(Collectors.toList());
         Menu view = menu("View", viewModes);
 
-        menuBar(file, view);
+        List<MenuItem> paletteItems = palettes.stream()
+                .map(palette -> menuItem(palette.getName(), () -> {
+                    onPaletteChange.invoke(palette);
+                }))
+                .collect(Collectors.toList());
+        Menu paletteMenu = menu("Palettes", paletteItems);
+
+        menuBar(file, view, paletteMenu);
         saveMenuItem.setDisable(true);
     }
 
@@ -150,6 +159,10 @@ final class SelectionGui extends Gui {
 
     public void onViewModeChange(Consumer<ViewMode> handler) {
         onViewModeChange.add(handler);
+    }
+
+    public void onPaletteChange(Consumer<Palette> handler) {
+        onPaletteChange.add(handler);
     }
 
     public void rerender(Tile tile) {

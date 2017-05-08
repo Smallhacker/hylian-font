@@ -5,14 +5,20 @@ import javafx.scene.paint.Color;
 import java.util.Arrays;
 
 public final class Palette {
+    private final String name;
     private final int bpp;
     private final Color[] palette;
 
-    public Palette(int... palette) {
+    public Palette(String name, int... palette) {
+        this.name = name;
         this.bpp = palette.length;
         this.palette = Arrays.stream(palette)
                 .mapToObj(Palette::toColor)
                 .toArray(Color[]::new);
+    }
+
+    public String getName() {
+        return name;
     }
 
     public int getBpp() {

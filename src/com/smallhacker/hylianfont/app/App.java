@@ -12,11 +12,23 @@ import javafx.stage.Stage;
 
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 
 public final class App extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+
+    private static final List<Palette> PALETTES = Arrays.asList(
+            new Palette("Text Boxes", 0x008888, 0x000073, 0xFFFFFF, 0xC60000),
+            new Palette("Ending: Green", 0x008888, 0x000000, 0x29FF5A, 0x000000),
+            new Palette("Ending: Yellow", 0x008888, 0x000000, 0xFFC639, 0x000000),
+            new Palette("Ending: Red", 0x008888, 0x000073, 0xF75239, 0x000000),
+            new Palette("Ending: White", 0x008888, 0x000000, 0xFFFFFF, 0x000000),
+            new Palette("File Select", 0x000000, 0x000000, 0xFFFFFF, 0x000000)
+
+    );
 
     private Path currentFile;
     private Font currentFont;
@@ -25,12 +37,12 @@ public final class App extends Application {
     @Override
     public void start(Stage primaryStage) {
         ViewMode defaultViewMode = ViewMode.WIDE_MODE;
-        Palette palette = new Palette(0x008888, 0x000073, 0xFFFFFF, 0xC60000);
+        Palette palette = PALETTES.get(0);
 
         Stage tileStage = new Stage();
         tileStage.initOwner(primaryStage);
         TileGui tileGui = new TileGui(tileStage, new Rendering(16, defaultViewMode.getTileMode(), palette));
-        SelectionGui selectionGui = new SelectionGui(primaryStage, new Rendering(2, defaultViewMode.getSelectionMode(), palette));
+        SelectionGui selectionGui = new SelectionGui(primaryStage, PALETTES, new Rendering(2, defaultViewMode.getSelectionMode(), palette));
 
         selectionGui.onLoad(path -> {
             try {
@@ -75,6 +87,13 @@ public final class App extends Application {
             tileGui.setRendering(tileGui.getRendering().withMode(viewMode.getTileMode()));
             selectionGui.setRendering(selectionGui.getRendering().withMode(viewMode.getSelectionMode()));
         });
+
+        selectionGui.onPaletteChange(pal -> {
+            tileGui.setRendering(tileGui.getRendering().withPalette(pal));
+            selectionGui.setRendering(selectionGui.getRendering().withPalette(pal));
+        });
+
+
         tileGui.onTileUpdate(selectionGui::rerender);
         selectionGui.onFocusChange(focus -> tileGui.stage().setAlwaysOnTop(focus));
 
